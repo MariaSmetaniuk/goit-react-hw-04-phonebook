@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { GlobalStyle } from './GlobalStyle';
 import { Box } from './Box';
@@ -7,32 +7,32 @@ import { Filter } from './Filter/Filter';
 import { ContactList } from './ContactList/ContactList';
 import { Notification } from './Notification/Notification';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+export const App = () => {
+  const [contacts, setContacts] = useState([]);
+  const [filter, setFilter] = useState('');
 
-  componentDidMount() {
-    const contacts = localStorage.getItem('contacts');
-    const parsedContacts = JSON.parse(contacts);
+  const firstRender = useRef(true);
+
+  // при першому рендері беру контакти з localStorage
+  useEffect(() => {
+    const oldContacts = localStorage.getItem('contacts');
+    const parsedContacts = JSON.parse(oldContacts);
 
     if (parsedContacts) {
-      this.setState({ contacts: parsedContacts });
+      setContacts(parsedContacts);
     }
-  }
+  }, []);
 
-  componentDidUpdate(prevProps, prevState) {
-    const nextContacts = this.state.contacts;
-    const prevContacts = prevState.contacts;
-
-    if (nextContacts !== prevContacts) {
-      localStorage.setItem('contacts', JSON.stringify(nextContacts));
+  // при оновленні стейту контактів записую в localStorage
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
     }
-  }
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
-  addContact = (name, number) => {
-    const { contacts } = this.state;
+  const addContact = (name, number) => {
     const id = nanoid();
 
     const isContactAdded = contacts.find(contact => name === contact.name);
@@ -41,70 +41,60 @@ export class App extends Component {
       alert(`${name} is already in contacts.`);
       return;
     }
-    this.setState(prevState => {
-      return {
-        contacts: [...prevState.contacts, { name, id, number }],
-      };
-    });
+    setContacts(prevContacts => [...prevContacts, { name, id, number }]);
   };
 
-  removeContact = async idToRemove => {
-    await this.setState(prevState => {
-      return {
-        contacts: prevState.contacts.filter(({ id }) => id !== idToRemove),
-      };
+  const removeContact = async idToRemove => {
+    await setContacts(prevContacts => {
+      return prevContacts.filter(({ id }) => id !== idToRemove);
     });
 
-    if (this.state.contacts.length === 0) {
-      this.setState({ filter: '' });
+    if (contacts.length === 0) {
+      setFilter('');
     }
   };
 
-  changeFilter = e => {
+  const changeFilter = e => {
     const { value } = e.target;
-    this.setState({ filter: value });
+    setFilter(value);
   };
 
-  getFilteredContacts = () => {
-    const { contacts, filter } = this.state;
+  const getFilteredContacts = () => {
     return contacts.filter(({ name }) =>
       name.toLowerCase().includes(filter.toLowerCase())
     );
   };
 
-  render() {
-    const { contacts, filter } = this.state;
-    const filteredContacts = this.getFilteredContacts();
-    return (
-      <Box p={5} as="main">
-        <Box
-          width="430px"
-          p={4}
-          mx="auto"
-          bg="white"
-          borderRadius="md"
-          boxShadow="primary"
-          color="text"
-        >
-          <h1>Phonebook</h1>
-          <ContactForm onAddContact={this.addContact} />
-          <h2>Contacts</h2>
-          <Box mt={4}>
-            {contacts.length > 0 ? (
-              <>
-                <Filter value={filter} onChange={this.changeFilter} />
-                <ContactList
-                  contacts={filter === '' ? contacts : filteredContacts}
-                  onRemoveContact={this.removeContact}
-                />
-              </>
-            ) : (
-              <Notification />
-            )}
-          </Box>
+  const filteredContacts = getFilteredContacts();
+  const isContacts = contacts.length > 0;
+  const isContactListShown = contacts.length > 0 && filteredContacts.length > 0;
+
+  return (
+    <Box p={5} as="main">
+      <Box
+        width="430px"
+        p={4}
+        mx="auto"
+        bg="white"
+        borderRadius="md"
+        boxShadow="primary"
+        color="text"
+      >
+        <h1>Phonebook</h1>
+        <ContactForm onAddContact={addContact} />
+        <h2>Contacts</h2>
+        <Box mt={4}>
+          {isContacts && <Filter value={filter} onChange={changeFilter} />}
+          {isContactListShown && (
+            <ContactList
+              contacts={filter === '' ? contacts : filteredContacts}
+              onRemoveContact={removeContact}
+            />
+          )}
+          {!isContacts && <Notification />}
         </Box>
-        <GlobalStyle />
       </Box>
-    );
-  }
-}
+      <GlobalStyle />
+    </Box>
+  );
+};
