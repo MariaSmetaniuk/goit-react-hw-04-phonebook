@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { GlobalStyle } from './GlobalStyle';
 import { Box } from './Box';
@@ -8,27 +8,17 @@ import { ContactList } from './ContactList/ContactList';
 import { Notification } from './Notification/Notification';
 
 export const App = () => {
-  const [contacts, setContacts] = useState([]);
-  const [filter, setFilter] = useState('');
-
-  const firstRender = useRef(true);
-
-  // при першому рендері беру контакти з localStorage
-  useEffect(() => {
+  // роблю ліниву ініціалізацію, де беру контакти з localStorage
+  const [contacts, setContacts] = useState(() => {
     const oldContacts = localStorage.getItem('contacts');
     const parsedContacts = JSON.parse(oldContacts);
 
-    if (parsedContacts) {
-      setContacts(parsedContacts);
-    }
-  }, []);
+    return parsedContacts ?? [];
+  });
+  const [filter, setFilter] = useState('');
 
   // при оновленні стейту контактів записую в localStorage
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
     localStorage.setItem('contacts', JSON.stringify(contacts));
   }, [contacts]);
 
